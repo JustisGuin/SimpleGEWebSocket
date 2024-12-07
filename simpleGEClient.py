@@ -1,62 +1,76 @@
 import asyncio
-import websocket
-from simpleGE import Scene
-import pygame, sys
+import websockets  # Use the correct websockets library
+import simpleGE
 
-
-class WebSocketClient(Scene):
-    def __init__(self, size=(640, 480)):
-        super().__init__(size)
+class WebSocketClient(simpleGE.Scene):
+    def __init__(self):
+        super().__init__()
         self.connected = False
         self.websocket = None
         self.messages = []
 
+        # GUI/UI elements
+        self.lblOut = simpleGE.Label()
+        self.lblOut.center = (320, 50)
+        self.lblOut.size = (300, 30)
+        self.lblOut.text = "WebSocket Client 1:"
 
-        #GUI/ UI elements 
-        self.font = pygame.font.Font(None, 36)
-        self.inputBox = pygame.Rect(50, 300, 540, 40)
-        self.inputText = '...'
-        self.active = False
+        self.txtInput = simpleGE.TxtInput()
+        self.txtInput.center = (320, 80)
+        self.txtInput.text = ""
+
+        self.btnSend = simpleGE.Button()
+        self.btnSend.center = (320, 120)
+        self.btnSend.text = "Send"
+
+        self.lblOut2 = simpleGE.Label()
+        self.lblOut2.center = (320, 170)
+        self.lblOut2.text = "WebSocket Client 2:"
+
+
+        self.sprites = [self.lblOut2,self.lblOut, self.txtInput, self.btnSend]
 
     async def connect(self):
         url = 'ws://localhost:5000'
-        self.websocket = await websocket.connect(url)
+        self.websocket = await websockets.connect(url)  # Use websockets.connect
         self.connected = True
-        if (self.connected == True):
-            print("Connected to server")
-        else:
-            print("Failed connection please try again")
+        print("Connected to server")
         
-        #Reciving messages 
+        # Receiving messages 
         asyncio.create_task(self.receiveMessages())
 
     async def receiveMessages(self):
         while self.connected:
             try: 
                 message = await self.websocket.recv()
-                self.messages.append(f"Recieved: {message}")
+                self.messages.append(f"Received: {message}")
             except Exception as e:
-                print(f"Error occured: {e}")
+                print(f"Error occurred: {e}")
                 self.connected = False
 
-        
-    def handleInput(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.connected = False
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if self.active:
-                    if event.key == pygame.K_RETURN:
-                        asyncio.run(self.sendMessage(self.inputText))
-                        self.inputText = ''
-                    elif event.key == pygame.K_BACKSPACE:
-                        self.inputText = self.inputText[:-1]
-                    else:
-                        self.inputText += event.unicode
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.inputBox.collidepoint(event.pos):
-                    self.active = not self.active
-                else:
-                    self.active = False
+    def processEvent(self, event):
+        self.txtInput.readKeys(event)  # Handle text input
+
+    def process(self):
+        if self.btnSend.clicked:
+            message = self.txtInput.text
+            if message:
+                asyncio.run(self.sendMessage(message))
+                self.txtInput.text = ""  # Clear input after sending
+
+        # Update label to show received messages
+        if self.messages:
+            self.lblOut.text = "\n".join(self.messages[-5:])  # Show last 5 messages
+
+    async def sendMessage(self, message):
+        if self.connected:
+            await self.websocket.send(message)
+            self.messages.append(f"You: {message}")
+
+def main():
+    client = WebSocketClient()
+    asyncio.run(client.connect())  # Connect to the WebSocket server
+    client.start()  # Start the simpleGE scene
+
+if __name__ == "__main__":
+    main()
