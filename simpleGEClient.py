@@ -40,3 +40,23 @@ class WebSocketClient(Scene):
                 self.connected = False
 
         
+    def handleInput(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.connected = False
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if self.active:
+                    if event.key == pygame.K_RETURN:
+                        asyncio.run(self.sendMessage(self.inputText))
+                        self.inputText = ''
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.inputText = self.inputText[:-1]
+                    else:
+                        self.inputText += event.unicode
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if self.inputBox.collidepoint(event.pos):
+                    self.active = not self.active
+                else:
+                    self.active = False
